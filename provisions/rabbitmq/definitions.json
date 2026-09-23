@@ -1,0 +1,109 @@
+{
+  "vhosts": [
+    { "name": "/" }
+  ],
+  "users": [
+    {
+      "name": "devuser",
+      "password": "devpassword",
+      "tags": ["administrator"]
+    }
+  ],
+  "permissions": [
+    {
+      "user": "devuser",
+      "vhost": "/",
+      "configure": ".*",
+      "write": ".*",
+      "read": ".*"
+    }
+  ],
+  "exchanges": [
+    {
+      "name": "fulfillment.exchange",
+      "vhost": "/",
+      "type": "topic",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "fulfillment.dlx",
+      "vhost": "/",
+      "type": "direct",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    }
+  ],
+  "queues": [
+    {
+      "name": "order.fulfillment.queue",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "fulfillment.dlx",
+        "x-dead-letter-routing-key": "order.fulfillment.dlq"
+      }
+    },
+    {
+      "name": "order.fulfillment.dlq",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "order.fulfilled.queue",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "fulfillment.dlx",
+        "x-dead-letter-routing-key": "order.fulfilled.dlq"
+      }
+    },
+    {
+      "name": "order.fulfilled.dlq",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    }
+  ],
+  "bindings": [
+    {
+      "source": "fulfillment.exchange",
+      "vhost": "/",
+      "destination": "order.fulfillment.queue",
+      "destination_type": "queue",
+      "routing_key": "order.dispatched",
+      "arguments": {}
+    },
+    {
+      "source": "fulfillment.dlx",
+      "vhost": "/",
+      "destination": "order.fulfillment.dlq",
+      "destination_type": "queue",
+      "routing_key": "order.fulfillment.dlq",
+      "arguments": {}
+    },
+    {
+      "source": "fulfillment.exchange",
+      "vhost": "/",
+      "destination": "order.fulfilled.queue",
+      "destination_type": "queue",
+      "routing_key": "order.fulfilled",
+      "arguments": {}
+    },
+    {
+      "source": "fulfillment.dlx",
+      "vhost": "/",
+      "destination": "order.fulfilled.dlq",
+      "destination_type": "queue",
+      "routing_key": "order.fulfilled.dlq",
+      "arguments": {}
+    }
+  ]
+}

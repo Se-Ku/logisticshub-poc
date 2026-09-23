@@ -1,0 +1,112 @@
+services:
+
+  mysql:
+    image: mysql:8.4
+    container_name: logisticshub-poc-backend-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+        #    ports:
+      #      - "3306:3306"
+    volumes:
+      - ./mysql_data:/var/lib/mysql
+      - ./provisions/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:management
+    container_name: logisticshub-poc-backend-rabbitmq
+    ports:
+      #      - "5672:5672"    # AMQP protocol port 
+      - "15672:15672"  # Management Dashboard UI
+    volumes:
+      - ./provisions/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+      - ./provisions/rabbitmq/definitions.json:/etc/rabbitmq/definitions.json:ro
+      - ./rabbitmq_data:/var/lib/rabbitmq
+    restart: unless-stopped
+    healthcheck:
+      # check_running ensures the Erlang app and AMQP protocol engines are active
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_running"]
+      interval: 5s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
+
+  redis:
+    image: redis:latest
+    container_name: logisticshub-poc-backend-redis
+      #ports:
+         # - "6379:6379"
+    volumes:
+      - ./provisions/redis/redis.conf:/usr/local/etc/redis/redis.conf
+      - ./redis_data:/data
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
+    restart: unless-stopped
+
+  logisticshub-poc-orderfulworker:
+    build: ./services/logisticshub-poc-orderfulworker
+    image: se.ku/logisticshub-poc-orderfulworker
+    container_name: logisticshub-poc-orderfulworker
+    restart: unless-stopped
+    environment:
+      RABBITMQ_URL: ${ORDERFULWORKER_RABBITMQ_URL}
+      REDIS_URL: ${ORDERFULWORKER_REDIS_URL}
+
+
+  # HTTP API Container
+  logisticshub-poc-backend:
+    build: ./services/logisticshub-poc-backend
+    image: se.ku/logisticshub-poc-backend
+    environment:
+      # disable HTTPS redirect
+      SERVER_NAME: ":8080"
+    ports:
+      - "8080:8080"
+    env_file:
+      - ./provisions/logisticshub-poc-backend/env.local
+    volumes:
+      # Mount external JWT keys directory so keys stay on host
+      - ./provisions/logisticshub-poc-backend/config/jwt:/app/config/jwt
+    restart: unless-stopped
+
+  # Worker Container (Uses exact same image)
+  logisticshub-poc-backend-messenger-worker:
+    build: ./services/logisticshub-poc-backend
+    image: se.ku/logisticshub-poc-backend
+    container_name: logisticshub-poc-backend-messenger-worker
+    command: php bin/console messenger:consume fulfillment_inbound_amqp --limit=1000 --memory-limit=128M
+    env_file:
+      - ./provisions/logisticshub-poc-backend/env.local
+    volumes:
+      - ./provisions/logisticshub-poc-backend/config/jwt:/app/config/jwt
+    restart: unless-stopped
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+  logisticshub-poc-frontend:
+    build: ./services/logisticshub-poc-frontend
+    image: se.ku/logisticshub-poc-frontend
+    container_name: logisticshub-poc-frontend
+    environment:
+      NUXT_LOGISTICSHUB_BACKEND_API_BASE: ${NUXT_LOGISTICSHUB_BACKEND_API_BASE}
+    ports:
+      - "3000:3000"
+    restart: unless-stopped 
+   
+  logisticshub-poc-calcservice:
+    build: ./services/logisticshub-poc-calcservice
+    image: se.ku/logisticshub-poc-calcservice
+    container_name: logisticshub-poc-calcservice
+    environment:
+      ALLOWED_API_KEYS: ${CALCSERVICE_ALLOWED_API_KEYS}
+    restart: unless-stopped
+        
+  

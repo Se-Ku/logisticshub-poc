@@ -1,0 +1,12 @@
+[submodule "services/logisticshub-poc-calcservice"]
+	path = services/logisticshub-poc-calcservice
+	url = https://github.com/Se-Ku/logisticshub-poc-calcservice.git
+[submodule "services/logisticshub-poc-backend"]
+	path = services/logisticshub-poc-backend
+	url = https://github.com/Se-Ku/logisticshub-poc-backend.git
+[submodule "services/logisticshub-poc-orderfulworker"]
+	path = services/logisticshub-poc-orderfulworker
+	url = https://github.com/Se-Ku/logisticshub-poc-orderfulworker.git
+[submodule "services/logisticshub-poc-frontend"]
+	path = services/logisticshub-poc-frontend
+	url = https://github.com/Se-Ku/logisticshub-poc-frontend.git
